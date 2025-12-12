@@ -165,7 +165,7 @@ async function main() {
     } else {
         // Default: Worker mode
         if (!fs.existsSync(AUTH_FOLDER)) {
-            console.error("No session found. Please run 'npx tsx whatsapp.ts login' first.");
+            console.error("No session found. Please run 'npx tsx scripts/whatsapp.ts login' first.");
             process.exit(1);
         }
         await startWorker();
