@@ -40,8 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-auth_info_baileys/
+# whatsapp session
+wa_session/
+.wwebjs_auth/
+.wwebjs_cache/
+
+# database
 *.db
 *.db-wal
 *.db-shm
-file

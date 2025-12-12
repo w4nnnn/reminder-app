@@ -8,11 +8,12 @@ module.exports = {
         },
         {
             name: 'wa-reminder-worker',
-            script: 'npm',
-            args: 'run worker',
+            script: 'npx',
+            args: 'tsx scripts/whatsapp.ts',
+            cwd: './',
             autorestart: true,
-            restart_delay: 30000,
-            max_restarts: 0,
+            max_memory_restart: '500M',
+            // Long-running process, no restart_delay needed
         },
     ],
 };

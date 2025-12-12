@@ -1,110 +1,91 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
-import makeWASocket, {
-    DisconnectReason,
-    useMultiFileAuthState,
-    fetchLatestBaileysVersion,
-} from "baileys";
-import { Boom } from "@hapi/boom";
-import pino from "pino";
-import qrcode from "qrcode-terminal";
 import fs from "fs";
 import path from "path";
+import { Client, LocalAuth } from "whatsapp-web.js";
+import qrcode from "qrcode-terminal";
 import { db } from "../lib/db";
 import { reminders } from "../lib/schema";
 import { eq, lte, and } from "drizzle-orm";
 
-// Filter out verbose logs from dependencies
-const patterns = ["Closing session", "SessionEntry"];
-function isNoise(args: any[]) {
-    return args.some(arg => {
-        if (typeof arg === 'string') return patterns.some(p => arg.includes(p));
-        // Check for specific object structure common in the noisy logs
-        if (typeof arg === 'object' && arg !== null) {
-            return 'registrationId' in arg && 'currentRatchet' in arg && '_chains' in arg;
-        }
-        return false;
-    });
+const SESSION_PATH = "./wa_session";
+// Load templates
+const TEMPLATE_PATH = path.join(__dirname, "whatsapp/formatMessage.json");
+
+let templates: { text: string }[] = [];
+
+try {
+    const fileContent = fs.readFileSync(TEMPLATE_PATH, "utf-8");
+    templates = JSON.parse(fileContent);
+} catch (error) {
+    console.error("Failed to load message templates:", error);
+    // Fallback template
+    templates = [
+        { text: "*🔔 PENGINGAT 🔔*\n\n{message}\n\n------------------------------------------------\n_Pesan otomatis dari Reminder App_" }
+    ];
 }
 
-const originalLog = console.log;
-const originalInfo = console.info;
-const originalWarn = console.warn;
-const originalError = console.error;
-
-const monkeyPatch = (original: any) => (...args: any[]) => {
-    if (isNoise(args)) return;
-    original.apply(console, args);
-};
-
-console.log = monkeyPatch(originalLog);
-console.info = monkeyPatch(originalInfo);
-console.warn = monkeyPatch(originalWarn);
-console.error = monkeyPatch(originalError);
-
-const AUTH_FOLDER = "auth_info_baileys";
-
-async function connectToWhatsApp(mode: "login" | "worker") {
-    const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
-    const { version, isLatest } = await fetchLatestBaileysVersion();
-
-    console.log(`using WA v${version.join(".")}, isLatest: ${isLatest}`);
-
-    const sock = makeWASocket({
-        version,
-        logger: pino({ level: "silent" }) as any,
-        auth: state,
-        browser: ["ReminderApp", "Chrome", "1.0.0"],
-    });
-
-    sock.ev.on("creds.update", saveCreds);
-
-    sock.ev.on("connection.update", (update) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr && mode === "login") {
-            console.log("Scan the QR code below to login:");
-            qrcode.generate(qr, { small: true });
-        }
-
-        if (connection === "close") {
-            const shouldReconnect =
-                (lastDisconnect?.error as Boom)?.output?.statusCode !==
-                DisconnectReason.loggedOut;
-
-            console.log(
-                "connection closed due to ",
-                lastDisconnect?.error,
-                ", reconnecting ",
-                shouldReconnect
-            );
-
-            if (shouldReconnect) {
-                connectToWhatsApp(mode);
-            } else {
-                console.log("Connection closed. You are logged out.");
-                if (mode === "worker") process.exit(1);
-            }
-        } else if (connection === "open") {
-            console.log("opened connection");
-            if (mode === "login") {
-                console.log("Login successful! You can now run the worker.");
-                process.exit(0);
-            }
-        }
-    });
-
-    return sock;
+function getRandomMessage(message: string): string {
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return template.text.replace("{message}", message);
 }
 
-async function startWorker() {
-    console.log("Worker started...");
-    const sock = await connectToWhatsApp("worker");
+let client: Client;
 
-    // Wait for connection to be ready
-    await new Promise(resolve => setTimeout(resolve, 3000));
+async function initializeClient(): Promise<Client> {
+    console.log("Initializing WhatsApp client...");
 
+    client = new Client({
+        authStrategy: new LocalAuth({
+            dataPath: SESSION_PATH,
+        }),
+        puppeteer: {
+            headless: true,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-accelerated-2d-canvas",
+                "--no-first-run",
+                "--no-zygote",
+                "--disable-gpu",
+            ],
+        },
+    });
+
+    client.on("qr", (qr) => {
+        console.log("Scan QR Code below to login:");
+        qrcode.generate(qr, { small: true });
+    });
+
+    client.on("authenticated", () => {
+        console.log("Authenticated successfully!");
+    });
+
+    client.on("auth_failure", (msg) => {
+        console.error("Authentication failed:", msg);
+    });
+
+    client.on("ready", () => {
+        console.log("WhatsApp client is ready!");
+    });
+
+    client.on("disconnected", (reason) => {
+        console.log("Client disconnected:", reason);
+        // Reconnect after 5 seconds
+        setTimeout(() => {
+            console.log("Attempting to reconnect...");
+            client.initialize();
+        }, 5000);
+    });
+
+    await client.initialize();
+    return client;
+}
+
+async function checkAndSendReminders() {
+    console.log(`[${new Date().toLocaleTimeString()}] Checking for reminders...`);
     try {
         const now = new Date();
         const pendingReminders = await db
@@ -117,29 +98,38 @@ async function startWorker() {
                 )
             );
 
+        if (pendingReminders.length === 0) {
+            return;
+        }
+
+        console.log(`Found ${pendingReminders.length} pending reminders`);
+
         for (const reminder of pendingReminders) {
             console.log(`Sending reminder to ${reminder.phoneNumber}: ${reminder.message}`);
 
             try {
-                const jid = reminder.phoneNumber.includes("@s.whatsapp.net")
-                    ? reminder.phoneNumber
-                    : `${reminder.phoneNumber}@s.whatsapp.net`;
+                // Format phone number to WhatsApp ID
+                let phoneNumber = reminder.phoneNumber.replace(/\D/g, "");
+                if (phoneNumber.startsWith("0")) {
+                    phoneNumber = "62" + phoneNumber.slice(1);
+                }
+                const chatId = phoneNumber + "@c.us";
 
-                const formattedMessage = `*🔔 PENGINGAT 🔔*
+                const formattedMessage = getRandomMessage(reminder.message);
 
-${reminder.message}
-
-------------------------------------------------
-_Pesan otomatis dari https://wa-reminder.alecca.my.id/_`;
-
-                await sock.sendMessage(jid, { text: formattedMessage });
+                await client.sendMessage(chatId, formattedMessage);
 
                 await db
                     .update(reminders)
                     .set({ status: "sent" })
                     .where(eq(reminders.id, reminder.id));
 
-                console.log("pesan terkirim");
+                console.log(`Reminder ${reminder.id} sent successfully`);
+
+                // Random delay between messages (100ms - 3000ms) to avoid spam detection
+                const delay = Math.floor(Math.random() * (3000 - 100 + 1) + 100);
+                console.log(`Waiting for ${delay}ms before next message...`);
+                await new Promise((resolve) => setTimeout(resolve, delay));
             } catch (error) {
                 console.error(`Failed to send reminder ${reminder.id}:`, error);
                 await db
@@ -148,38 +138,39 @@ _Pesan otomatis dari https://wa-reminder.alecca.my.id/_`;
                     .where(eq(reminders.id, reminder.id));
             }
         }
-
-        if (pendingReminders.length === 0) {
-            console.log("No pending reminders.");
-        }
     } catch (error) {
-        console.error("Error in worker:", error);
+        console.error("Error checking reminders:", error);
     }
-
-    console.log("Worker finished. Exiting...");
-    process.exit(0);
 }
 
 async function main() {
-    const arg = process.argv[2];
+    console.log("WhatsApp Worker starting (long-running)...");
 
-    if (arg === "login") {
-        await connectToWhatsApp("login");
-    } else if (arg === "logout") {
-        if (fs.existsSync(AUTH_FOLDER)) {
-            fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
-            console.log("Logged out. Session cleared.");
+    await initializeClient();
+
+    // Wait for client to be ready
+    await new Promise<void>((resolve) => {
+        if (client.info) {
+            resolve();
         } else {
-            console.log("No session found.");
+            client.on("ready", () => resolve());
         }
-    } else {
-        // Default: Worker mode
-        if (!fs.existsSync(AUTH_FOLDER)) {
-            console.error("No session found. Please run 'npx tsx scripts/whatsapp.ts login' first.");
-            process.exit(1);
-        }
-        await startWorker();
-    }
+    });
+
+    console.log("Starting reminder check loop...");
+
+    // Check reminders every 5 seconds
+    const checkInterval = 10000;
+
+    // Initial check
+    await checkAndSendReminders();
+
+    // Long-running loop
+    setInterval(async () => {
+        await checkAndSendReminders();
+    }, checkInterval);
+
+    console.log(`Worker running. Checking reminders every ${checkInterval / 1000} seconds.`);
 }
 
-main();
+main().catch(console.error);
