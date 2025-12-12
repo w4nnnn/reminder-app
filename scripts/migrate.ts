@@ -5,7 +5,7 @@ import * as path from 'path';
 
 dotenv.config();
 
-const dbPath = process.env.DATABASE_URL || 'sqlite.db';
+const dbPath = process.env.DATABASE_URL;
 console.log('Using database:', dbPath);
 
 const db = new Database(dbPath);
