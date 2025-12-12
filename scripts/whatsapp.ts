@@ -115,6 +115,14 @@ async function checkAndSendReminders() {
                 }
                 const chatId = phoneNumber + "@c.us";
 
+                // Simulate typing
+                const chat = await client.getChatById(chatId);
+                await chat.sendStateTyping();
+
+                // Typing delay (1-3 seconds) to make it look real
+                const typingDelay = Math.floor(Math.random() * (3000 - 1000 + 1) + 1000);
+                await new Promise((resolve) => setTimeout(resolve, typingDelay));
+
                 const formattedMessage = getRandomMessage(reminder.message);
 
                 await client.sendMessage(chatId, formattedMessage);
