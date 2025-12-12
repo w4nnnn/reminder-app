@@ -1,17 +1,8 @@
-import { betterFetch } from "@better-fetch/fetch";
 import { NextResponse, type NextRequest } from "next/server";
 
 export default async function authMiddleware(request: NextRequest) {
-    const { data: session } = await betterFetch<any>("/api/auth/get-session", {
-        baseURL: request.nextUrl.origin,
-        headers: {
-            cookie: request.headers.get("cookie") || "",
-        },
-    });
-
-    if (!session) {
-        return NextResponse.redirect(new URL("/sign-in", request.url));
-    }
+    // Middleware sementara dinonaktifkan karena belum ada auth setup
+    // TODO: Implementasi auth jika diperlukan
     return NextResponse.next();
 }
 

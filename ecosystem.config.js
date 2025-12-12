@@ -4,15 +4,15 @@ module.exports = {
             name: 'next-app',
             script: 'npm',
             args: 'start',
+            cwd: './',
         },
         {
             name: 'whatsapp-worker',
-            script: 'scripts/whatsapp.ts',
-            interpreter: 'node_modules/.bin/tsx',
+            script: 'npx',
+            args: 'tsx scripts/whatsapp.ts',
             autorestart: true,
-            restart_delay: 10000,
+            restart_delay: 30000,
             max_restarts: 0,
         },
     ],
 };
-

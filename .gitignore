@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 auth_info_baileys/
+*.db
+*.db-wal
+*.db-shm
