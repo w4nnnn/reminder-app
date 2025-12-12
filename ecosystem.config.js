@@ -1,13 +1,13 @@
 module.exports = {
     apps: [
         {
-            name: 'next-app',
+            name: 'wa-reminder-frontend',
             script: 'npm',
             args: 'start',
             cwd: './',
         },
         {
-            name: 'whatsapp-worker',
+            name: 'wa-reminder-worker',
             script: 'npx',
             args: 'tsx scripts/whatsapp.ts',
             autorestart: true,
