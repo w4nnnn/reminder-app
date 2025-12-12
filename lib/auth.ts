@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { emailOTP } from "better-auth/plugins";
 import { getDb } from "./db";
 import * as schema from "./schema";
 
@@ -17,41 +18,53 @@ export const auth = betterAuth({
         enabled: true,
         requireEmailVerification: true,
     },
-    emailVerification: {
-        sendOnSignUp: true,
-        autoSignInAfterVerification: true,
-        sendVerificationEmail: async ({ user, url }) => {
-            const resendApiKey = process.env.RESEND_API_KEY;
-            const emailFrom = process.env.EMAIL_FROM;
+    plugins: [
+        emailOTP({
+            async sendVerificationOTP({ email, otp, type }) {
+                const resendApiKey = process.env.RESEND_API_KEY;
+                const emailFrom = process.env.EMAIL_FROM;
 
-            if (!resendApiKey || !emailFrom) {
-                console.error("Missing RESEND_API_KEY or EMAIL_FROM environment variables");
-                throw new Error("Email configuration missing");
-            }
+                if (!resendApiKey || !emailFrom) {
+                    console.error("Missing RESEND_API_KEY or EMAIL_FROM environment variables");
+                    throw new Error("Email configuration missing");
+                }
 
-            const { Resend } = await import("resend");
-            const resend = new Resend(resendApiKey);
+                const { Resend } = await import("resend");
+                const resend = new Resend(resendApiKey);
 
-            await resend.emails.send({
-                from: emailFrom,
-                to: user.email,
-                subject: "Verifikasi Email - WA Reminder",
-                html: `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #333;">Verifikasi Email Anda</h2>
-                        <p>Halo ${user.name},</p>
-                        <p>Terima kasih telah mendaftar di WA Reminder. Klik tombol di bawah untuk memverifikasi email Anda:</p>
-                        <a href="${url}" style="display: inline-block; background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 16px 0;">
-                            Verifikasi Email
-                        </a>
-                        <p>Atau salin link berikut ke browser Anda:</p>
-                        <p style="word-break: break-all; color: #666;">${url}</p>
-                        <p>Link ini akan kadaluarsa dalam 24 jam.</p>
-                        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                        <p style="color: #999; font-size: 12px;">Jika Anda tidak mendaftar di WA Reminder, abaikan email ini.</p>
-                    </div>
-                `,
-            });
-        },
-    },
+                await resend.emails.send({
+                    from: emailFrom,
+                    to: email,
+                    subject: "Kode Verifikasi - WA Reminder",
+                    html: `
+                            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; max-width: 480px; margin: 0 auto; padding: 40px 20px; background-color: #ffffff;">
+                            <div style="text-align: center; margin-bottom: 32px;">
+                                <img src="${process.env.BETTER_AUTH_URL}/icon.png" alt="WA Reminder Logo" style="width: 48px; height: 48px; margin-bottom: 16px;">
+                                <h1 style="color: #111827; font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Kode Verifikasi</h1>
+                            </div>
+                            
+                            <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 16px; padding: 32px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                                <p style="color: #4b5563; font-size: 15px; margin: 0 0 24px 0; line-height: 1.5;">Gunakan kode berikut untuk menyelesaikan proses verifikasi Anda:</p>
+                                
+                                <div style="margin: 0 0 24px 0;">
+                                    <span style="font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 700; color: #2563eb; letter-spacing: 8px; background-color: #ffffff; padding: 12px 24px; border-radius: 8px; border: 1px solid #dbeafe;">
+                                        ${otp}
+                                    </span>
+                                </div>
+                                
+                                <p style="color: #6b7280; font-size: 13px; margin: 0;">Kode ini berlaku selama 15 menit.</p>
+                            </div>
+                            
+                            <div style="margin-top: 32px; text-align: center;">
+                                <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin: 0;">
+                                    Jika Anda tidak merasa meminta kode ini, mohon abaikan email ini.<br>
+                                    &copy; ${new Date().getFullYear()} WA Reminder. All rights reserved.
+                                </p>
+                            </div>
+                        </div>
+                    `,
+                });
+            },
+        }),
+    ],
 });

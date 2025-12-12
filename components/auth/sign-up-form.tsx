@@ -2,20 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signUp } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { signUp, emailOtp } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bell, Loader2, Mail, Lock, User, AlertCircle, CheckCircle2, MailCheck } from "lucide-react";
+import {
+    InputOTP,
+    InputOTPGroup,
+    InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { Bell, Loader2, Mail, Lock, User, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 
-type Step = "form" | "verification-sent";
+type Step = "form" | "otp-verification";
 
 export function SignUpForm() {
+    const router = useRouter();
     const [step, setStep] = useState<Step>("form");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [otp, setOtp] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -44,11 +53,64 @@ export function SignUpForm() {
 
             if (result.error) {
                 setError(result.error.message || "Gagal mendaftar. Silakan coba lagi.");
+                setIsLoading(false);
             } else {
-                setStep("verification-sent");
+                // SignUp berhasil, email OTP sudah dikirim otomatis oleh plugin
+                toast.success("Kode OTP telah dikirim ke email Anda!");
+                setStep("otp-verification");
+                setIsLoading(false);
+            }
+        } catch (err) {
+            console.error("Sign up error:", err);
+            setError("Terjadi kesalahan. Silakan coba lagi.");
+            setIsLoading(false);
+        }
+    };
+
+    const handleVerifyOTP = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            const result = await emailOtp.verifyEmail({
+                email,
+                otp,
+            });
+
+            if (result.error) {
+                setError(result.error.message || "Kode OTP salah atau kadaluarsa");
+                setIsLoading(false);
+            } else {
+                toast.success("Email berhasil diverifikasi!");
+                // Auto sign in setelah verifikasi
+                router.push("/app");
+                router.refresh();
+            }
+        } catch (err) {
+            console.error("OTP verification error:", err);
+            setError("Terjadi kesalahan saat verifikasi.");
+            setIsLoading(false);
+        }
+    };
+
+    const handleResendOTP = async () => {
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            const result = await emailOtp.sendVerificationOtp({
+                email,
+                type: "email-verification",
+            });
+
+            if (result.error) {
+                setError("Gagal mengirim ulang kode OTP");
+            } else {
+                toast.success("Kode OTP baru telah dikirim!");
             }
         } catch {
-            setError("Terjadi kesalahan. Silakan coba lagi.");
+            setError("Terjadi kesalahan saat mengirim ulang OTP");
         } finally {
             setIsLoading(false);
         }
@@ -70,16 +132,18 @@ export function SignUpForm() {
                             </p>
                         </>
                     )}
-                    {step === "verification-sent" && (
+                    {step === "otp-verification" && (
                         <>
                             <h1 className="text-2xl font-bold">Verifikasi Email</h1>
                             <p className="text-muted-foreground mt-2">
-                                Kami telah mengirim link verifikasi ke email Anda
+                                Masukkan 6 digit kode yang dikirim ke{" "}
+                                <span className="font-medium text-foreground">{email}</span>
                             </p>
                         </>
                     )}
                 </div>
 
+                {/* Registration Form */}
                 {step === "form" && (
                     <div className="bg-card border rounded-2xl p-6 shadow-lg">
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -176,7 +240,14 @@ export function SignUpForm() {
                             <Button
                                 type="submit"
                                 className="w-full h-11"
-                                disabled={isLoading || !name || !email || !password || !confirmPassword || password !== confirmPassword}
+                                disabled={
+                                    isLoading ||
+                                    !name ||
+                                    !email ||
+                                    !password ||
+                                    !confirmPassword ||
+                                    password !== confirmPassword
+                                }
                             >
                                 {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                 Daftar
@@ -192,26 +263,59 @@ export function SignUpForm() {
                     </div>
                 )}
 
-                {step === "verification-sent" && (
-                    <div className="bg-card border rounded-2xl p-8 shadow-lg text-center">
-                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <MailCheck className="h-8 w-8 text-primary" />
-                        </div>
-                        <h2 className="text-xl font-semibold mb-2">Cek Email Anda</h2>
-                        <p className="text-muted-foreground mb-6">
-                            Kami telah mengirim link verifikasi ke <span className="font-medium text-foreground">{email}</span>.
-                            Klik link tersebut untuk mengaktifkan akun Anda.
-                        </p>
-                        <div className="space-y-3">
-                            <p className="text-sm text-muted-foreground">
-                                Tidak menerima email? Periksa folder spam Anda.
-                            </p>
-                            <Link href="/sign-in">
-                                <Button variant="outline" className="w-full">
-                                    Kembali ke Halaman Masuk
+                {/* OTP Verification */}
+                {step === "otp-verification" && (
+                    <div className="bg-card border rounded-2xl p-8 shadow-lg">
+                        <form onSubmit={handleVerifyOTP} className="flex flex-col items-center space-y-6">
+                            {error && (
+                                <div className="flex items-start gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg w-full text-left">
+                                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                    <span>{error}</span>
+                                </div>
+                            )}
+
+                            <div className="flex justify-center w-full">
+                                <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)} disabled={isLoading}>
+                                    <InputOTPGroup>
+                                        <InputOTPSlot index={0} />
+                                        <InputOTPSlot index={1} />
+                                        <InputOTPSlot index={2} />
+                                        <InputOTPSlot index={3} />
+                                        <InputOTPSlot index={4} />
+                                        <InputOTPSlot index={5} />
+                                    </InputOTPGroup>
+                                </InputOTP>
+                            </div>
+
+                            <Button type="submit" className="w-full h-11" disabled={isLoading || otp.length < 6}>
+                                {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                Verifikasi
+                                {!isLoading && <ArrowRight className="h-4 w-4 ml-2" />}
+                            </Button>
+
+                            <div className="flex flex-col gap-2 w-full">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleResendOTP}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground"
+                                >
+                                    Kirim Ulang Kode
                                 </Button>
-                            </Link>
-                        </div>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setStep("form")}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground"
+                                >
+                                    Kembali / Ganti Email
+                                </Button>
+                            </div>
+                        </form>
                     </div>
                 )}
             </div>
