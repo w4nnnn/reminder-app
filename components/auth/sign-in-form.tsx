@@ -26,10 +26,7 @@ export function SignInForm() {
                 password,
             });
 
-            console.log("Sign in result:", result);
-
             if (result.error) {
-                console.error("Sign in error:", result.error);
                 setError(result.error.message || "Email atau password salah");
                 setIsLoading(false);
                 return;
@@ -47,8 +44,7 @@ export function SignInForm() {
             // If no error and no data, something unexpected happened
             setError("Terjadi kesalahan yang tidak terduga. Silakan coba lagi.");
             setIsLoading(false);
-        } catch (err) {
-            console.error("Sign in exception:", err);
+        } catch {
             setError("Terjadi kesalahan. Silakan coba lagi.");
             setIsLoading(false);
         }
