@@ -5,6 +5,8 @@ import { getDb } from "./db";
 import * as schema from "./schema";
 
 export const auth = betterAuth({
+    baseURL: process.env.BETTER_AUTH_URL,
+    trustedOrigins: process.env.BETTER_AUTH_URL ? [process.env.BETTER_AUTH_URL] : [],
     database: drizzleAdapter(getDb(), {
         provider: "sqlite",
         schema: {
@@ -18,8 +20,15 @@ export const auth = betterAuth({
         enabled: true,
         requireEmailVerification: true,
     },
+    advanced: {
+        useSecureCookies: process.env.NODE_ENV === "production",
+        crossSubDomainCookies: {
+            enabled: false,
+        },
+    },
     plugins: [
         emailOTP({
+            sendVerificationOnSignUp: true,
             async sendVerificationOTP({ email, otp, type }) {
                 const resendApiKey = process.env.RESEND_API_KEY;
                 const emailFrom = process.env.EMAIL_FROM;
@@ -37,7 +46,7 @@ export const auth = betterAuth({
                     to: email,
                     subject: "Kode Verifikasi - WA Reminder",
                     html: `
-                            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; max-width: 480px; margin: 0 auto; padding: 40px 20px; background-color: #ffffff;">
+                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'; max-width: 480px; margin: 0 auto; padding: 40px 20px; background-color: #ffffff;">
                             <div style="text-align: center; margin-bottom: 32px;">
                                 <img src="${process.env.BETTER_AUTH_URL}/icon.png" alt="WA Reminder Logo" style="width: 48px; height: 48px; margin-bottom: 16px;">
                                 <h1 style="color: #111827; font-size: 24px; font-weight: 700; margin: 0; letter-spacing: -0.5px;">Kode Verifikasi</h1>

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signUp, emailOtp } from "@/lib/auth-client";
+import { signUp, emailOtp, signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,13 +11,12 @@ import {
     InputOTPGroup,
     InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { Bell, Loader2, Mail, Lock, User, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Bell, Loader2, Mail, Lock, User, AlertCircle, CheckCircle2, ArrowRight, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 type Step = "form" | "otp-verification";
 
 export function SignUpForm() {
-    const router = useRouter();
     const [step, setStep] = useState<Step>("form");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -27,6 +25,15 @@ export function SignUpForm() {
     const [otp, setOtp] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [cooldown, setCooldown] = useState(0);
+
+    // Cooldown timer effect
+    useEffect(() => {
+        if (cooldown > 0) {
+            const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [cooldown]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -45,21 +52,24 @@ export function SignUpForm() {
         setIsLoading(true);
 
         try {
-            const result = await signUp.email({
+            // Sign up user - OTP will be sent automatically by plugin
+            const signUpResult = await signUp.email({
                 name,
                 email,
                 password,
             });
 
-            if (result.error) {
-                setError(result.error.message || "Gagal mendaftar. Silakan coba lagi.");
+            if (signUpResult.error) {
+                setError(signUpResult.error.message || "Gagal mendaftar. Silakan coba lagi.");
                 setIsLoading(false);
-            } else {
-                // SignUp berhasil, email OTP sudah dikirim otomatis oleh plugin
-                toast.success("Kode OTP telah dikirim ke email Anda!");
-                setStep("otp-verification");
-                setIsLoading(false);
+                return;
             }
+
+            // OTP sent automatically, just show verification step
+            toast.success("Kode OTP telah dikirim ke email Anda!");
+            setCooldown(60); // 60 detik cooldown
+            setStep("otp-verification");
+            setIsLoading(false);
         } catch (err) {
             console.error("Sign up error:", err);
             setError("Terjadi kesalahan. Silakan coba lagi.");
@@ -81,12 +91,27 @@ export function SignUpForm() {
             if (result.error) {
                 setError(result.error.message || "Kode OTP salah atau kadaluarsa");
                 setIsLoading(false);
-            } else {
-                toast.success("Email berhasil diverifikasi!");
-                // Auto sign in setelah verifikasi
-                router.push("/app");
-                router.refresh();
+                return;
             }
+
+            // Verification success - auto login
+            toast.success("Email berhasil diverifikasi! Sedang masuk...");
+
+            // Sign in automatically
+            const signInResult = await signIn.email({
+                email,
+                password,
+                callbackURL: "/app",
+            });
+
+            if (signInResult.error) {
+                setError("Verifikasi berhasil, tetapi gagal masuk otomatis. Silakan masuk manual.");
+                setIsLoading(false);
+                return;
+            }
+
+            // Use hard navigation to ensure cookie is read properly
+            window.location.href = "/app";
         } catch (err) {
             console.error("OTP verification error:", err);
             setError("Terjadi kesalahan saat verifikasi.");
@@ -95,6 +120,8 @@ export function SignUpForm() {
     };
 
     const handleResendOTP = async () => {
+        if (cooldown > 0) return;
+
         setError(null);
         setIsLoading(true);
 
@@ -108,6 +135,7 @@ export function SignUpForm() {
                 setError("Gagal mengirim ulang kode OTP");
             } else {
                 toast.success("Kode OTP baru telah dikirim!");
+                setCooldown(60); // 60 detik cooldown
             }
         } catch {
             setError("Terjadi kesalahan saat mengirim ulang OTP");
@@ -299,10 +327,20 @@ export function SignUpForm() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={handleResendOTP}
-                                    disabled={isLoading}
+                                    disabled={isLoading || cooldown > 0}
                                     className="text-muted-foreground"
                                 >
-                                    Kirim Ulang Kode
+                                    {cooldown > 0 ? (
+                                        <>
+                                            <RefreshCw className="h-4 w-4 mr-2" />
+                                            Kirim Ulang ({cooldown}s)
+                                        </>
+                                    ) : (
+                                        <>
+                                            <RefreshCw className="h-4 w-4 mr-2" />
+                                            Kirim Ulang Kode
+                                        </>
+                                    )}
                                 </Button>
                                 <Button
                                     type="button"
