@@ -185,6 +185,8 @@ export function DateTimePicker({
                 className="w-auto p-0 shadow-xl border-border/50 backdrop-blur-sm"
                 align="start"
                 sideOffset={8}
+                onWheel={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
             >
                 <div className="flex flex-col sm:flex-row">
                     <div className="p-3">
@@ -218,7 +220,11 @@ export function DateTimePicker({
                                 <Label className="text-xs text-center text-muted-foreground mb-2 font-medium">
                                     Jam
                                 </Label>
-                                <div ref={hoursRef} className="h-[200px] rounded-lg border bg-background overflow-y-auto scrollbar-hide">
+                                <div
+                                    ref={hoursRef}
+                                    className="h-[200px] rounded-lg border bg-background overflow-y-auto overscroll-contain scrollbar-hide"
+                                    style={{ touchAction: 'pan-y' }}
+                                >
                                     <div className="p-1">
                                         {hours.map((hour) => (
                                             <Button
@@ -243,7 +249,11 @@ export function DateTimePicker({
                                 <Label className="text-xs text-center text-muted-foreground mb-2 font-medium">
                                     Menit
                                 </Label>
-                                <div ref={minutesRef} className="h-[200px] rounded-lg border bg-background overflow-y-auto scrollbar-hide">
+                                <div
+                                    ref={minutesRef}
+                                    className="h-[200px] rounded-lg border bg-background overflow-y-auto overscroll-contain scrollbar-hide"
+                                    style={{ touchAction: 'pan-y' }}
+                                >
                                     <div className="p-1">
                                         {minutes.map((minute) => (
                                             <Button
