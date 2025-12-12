@@ -74,10 +74,12 @@ export default function LandingPage() {
                                 <Edit3 className="h-5 w-5 text-primary mt-0.5" />
                                 <span className="text-muted-foreground">Jangan lupa meeting jam 10!</span>
                             </div>
-                            <Button className="w-full gap-2">
-                                <Send className="h-4 w-4" />
-                                Jadwalkan Pengingat
-                            </Button>
+                            <Link href="/sign-in" className="w-full">
+                                <Button className="w-full gap-2">
+                                    <Send className="h-4 w-4" />
+                                    Jadwalkan Pengingat
+                                </Button>
+                            </Link>
                         </div>
                     </div>
                 </div>

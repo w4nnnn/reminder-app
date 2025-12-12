@@ -1,0 +1,25 @@
+{
+  "name": "WA Reminder",
+  "short_name": "WA Reminder",
+  "description": "Jadwalkan pengingat WhatsApp otomatis dengan mudah",
+  "start_url": "/",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#0a0a0a",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait"
+}
