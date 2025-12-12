@@ -31,7 +31,7 @@ export default async function AppLayout({
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <User className="h-4 w-4" />
-                            <span>{session.user.email}</span>
+                            <span>{session.user.name}</span>
                         </div>
                         <form action={signOutAction}>
                             <Button variant="ghost" size="sm" type="submit">

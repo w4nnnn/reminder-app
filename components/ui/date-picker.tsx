@@ -1,34 +1,10 @@
 "use client"
 
 /**
- * DateTimePicker Component
+ * DateTimePicker Component (Mobile Friendly)
  * 
  * Komponen untuk memilih tanggal dan waktu dengan tampilan elegan.
- * Menggunakan komponen shadcn/ui (Calendar, Popover, Button).
- * 
- * @example
- * ```tsx
- * import { DateTimePicker } from "@/components/ui/date-picker"
- * import { useState } from "react"
- * 
- * export function MyComponent() {
- *   const [date, setDate] = useState<Date | undefined>(undefined)
- * 
- *   return (
- *     <DateTimePicker
- *       date={date}
- *       setDate={setDate}
- *       placeholder="Pilih jadwal"
- *       className="w-[300px]"
- *     />
- *   )
- * }
- * ```
- * 
- * @param date - Nilai tanggal yang dipilih (controlled)
- * @param setDate - Callback untuk mengubah nilai tanggal
- * @param className - Class tambahan untuk tombol trigger
- * @param placeholder - Teks placeholder saat belum ada tanggal dipilih
+ * Menggunakan Popover di desktop dan Drawer di mobile.
  */
 
 import * as React from "react"
@@ -44,8 +20,18 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerTrigger,
+    DrawerFooter,
+    DrawerClose,
+} from "@/components/ui/drawer"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface DateTimePickerProps {
     date: Date | undefined
@@ -62,6 +48,7 @@ export function DateTimePicker({
 }: DateTimePickerProps) {
     const [isOpen, setIsOpen] = React.useState(false)
     const [selectedDateTime, setSelectedDateTime] = React.useState<Date | undefined>(date)
+    const isMobile = useIsMobile()
     const hoursRef = React.useRef<HTMLDivElement>(null)
     const minutesRef = React.useRef<HTMLDivElement>(null)
 
@@ -103,12 +90,10 @@ export function DateTimePicker({
     }, [isOpen, selectedDateTime])
 
     const hours = React.useMemo(() =>
-        Array.from({ length: 24 }, (_, i) => i), []
-    )
+        Array.from({ length: 24 }, (_, i) => i), [])
 
     const minutes = React.useMemo(() =>
-        Array.from({ length: 60 }, (_, i) => i), []
-    )
+        Array.from({ length: 60 }, (_, i) => i), [])
 
     const handleDateSelect = (day: Date | undefined) => {
         if (!day) {
@@ -157,28 +142,167 @@ export function DateTimePicker({
         setIsOpen(false)
     }
 
+    const TriggerButton = (
+        <Button
+            variant="outline"
+            className={cn(
+                "w-full justify-start text-left font-normal",
+                "hover:bg-accent/50 transition-colors duration-200",
+                "border-input focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                !date && "text-muted-foreground",
+                className
+            )}
+        >
+            <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
+            {date ? (
+                <span className="font-medium">
+                    {format(date, "EEE, d MMM yyyy HH:mm", { locale: id })}
+                </span>
+            ) : (
+                <span>{placeholder}</span>
+            )}
+        </Button>
+    )
+
+    const DateTimeContent = (
+        <>
+            <div className="flex flex-col">
+                <div className="p-3">
+                    <Calendar
+                        mode="single"
+                        selected={selectedDateTime}
+                        onSelect={handleDateSelect}
+                        locale={id}
+                        className="rounded-md mx-auto"
+                        classNames={{
+                            day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+                            day_today: "bg-accent text-accent-foreground font-bold",
+                        }}
+                    />
+                </div>
+
+                <Separator />
+
+                <div className="flex flex-col p-4 bg-muted/30">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Clock className="h-4 w-4 text-primary" />
+                        <Label className="text-sm font-semibold">Waktu</Label>
+                        <span className="ml-auto text-sm font-mono bg-primary/10 px-2 py-0.5 rounded text-primary">
+                            {selectedDateTime ? format(selectedDateTime, "HH:mm") : "--:--"}
+                        </span>
+                    </div>
+
+                    <div className="flex gap-2 flex-1">
+                        <div className="flex-1 flex flex-col">
+                            <Label className="text-xs text-center text-muted-foreground mb-2 font-medium">
+                                Jam
+                            </Label>
+                            <div
+                                ref={hoursRef}
+                                className="h-[150px] rounded-lg border bg-background overflow-y-auto overscroll-contain scrollbar-hide"
+                                style={{ touchAction: 'pan-y' }}
+                            >
+                                <div className="p-1">
+                                    {hours.map((hour) => (
+                                        <Button
+                                            key={hour}
+                                            size="sm"
+                                            variant={selectedDateTime?.getHours() === hour ? "default" : "ghost"}
+                                            className={cn(
+                                                "w-full justify-center mb-0.5 font-mono transition-all duration-150",
+                                                selectedDateTime?.getHours() === hour &&
+                                                "shadow-md scale-105"
+                                            )}
+                                            onClick={() => handleTimeChange("hour", hour)}
+                                        >
+                                            {hour.toString().padStart(2, '0')}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col">
+                            <Label className="text-xs text-center text-muted-foreground mb-2 font-medium">
+                                Menit
+                            </Label>
+                            <div
+                                ref={minutesRef}
+                                className="h-[150px] rounded-lg border bg-background overflow-y-auto overscroll-contain scrollbar-hide"
+                                style={{ touchAction: 'pan-y' }}
+                            >
+                                <div className="p-1">
+                                    {minutes.map((minute) => (
+                                        <Button
+                                            key={minute}
+                                            size="sm"
+                                            variant={selectedDateTime?.getMinutes() === minute ? "default" : "ghost"}
+                                            className={cn(
+                                                "w-full justify-center mb-0.5 font-mono transition-all duration-150",
+                                                selectedDateTime?.getMinutes() === minute &&
+                                                "shadow-md scale-105"
+                                            )}
+                                            onClick={() => handleTimeChange("minute", minute)}
+                                        >
+                                            {minute.toString().padStart(2, '0')}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <Separator />
+            <div className="flex items-center justify-between p-3 bg-muted/20">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClear}
+                    className="text-muted-foreground hover:text-destructive"
+                >
+                    Hapus
+                </Button>
+                <Button
+                    size="sm"
+                    onClick={handleConfirm}
+                    disabled={!selectedDateTime}
+                    className="px-6"
+                >
+                    Konfirmasi
+                </Button>
+            </div>
+        </>
+    )
+
+    // Mobile: Use Drawer
+    if (isMobile) {
+        return (
+            <Drawer open={isOpen} onOpenChange={setIsOpen}>
+                <DrawerTrigger asChild>
+                    {TriggerButton}
+                </DrawerTrigger>
+                <DrawerContent>
+                    <DrawerHeader>
+                        <DrawerTitle className="flex items-center gap-2 justify-center">
+                            <CalendarIcon className="h-5 w-5 text-primary" />
+                            Pilih Tanggal & Waktu
+                        </DrawerTitle>
+                    </DrawerHeader>
+                    <div className="overflow-y-auto max-h-[70vh]">
+                        {DateTimeContent}
+                    </div>
+                </DrawerContent>
+            </Drawer>
+        )
+    }
+
+    // Desktop: Use Popover
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    className={cn(
-                        "w-full justify-start text-left font-normal",
-                        "hover:bg-accent/50 transition-colors duration-200",
-                        "border-input focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                        !date && "text-muted-foreground",
-                        className
-                    )}
-                >
-                    <CalendarIcon className="mr-2 h-4 w-4 opacity-70" />
-                    {date ? (
-                        <span className="font-medium">
-                            {format(date, "EEEE, d MMMM yyyy 'pukul' HH:mm", { locale: id })}
-                        </span>
-                    ) : (
-                        <span>{placeholder}</span>
-                    )}
-                </Button>
+                {TriggerButton}
             </PopoverTrigger>
 
             <PopoverContent
@@ -188,114 +312,7 @@ export function DateTimePicker({
                 onWheel={(e) => e.stopPropagation()}
                 onTouchMove={(e) => e.stopPropagation()}
             >
-                <div className="flex flex-col sm:flex-row">
-                    <div className="p-3">
-                        <Calendar
-                            mode="single"
-                            selected={selectedDateTime}
-                            onSelect={handleDateSelect}
-                            locale={id}
-                            className="rounded-md"
-                            classNames={{
-                                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                                day_today: "bg-accent text-accent-foreground font-bold",
-                            }}
-                        />
-                    </div>
-
-                    <Separator orientation="vertical" className="hidden sm:block" />
-                    <Separator className="sm:hidden" />
-
-                    <div className="flex flex-col p-4 w-full sm:w-[180px] bg-muted/30">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Clock className="h-4 w-4 text-primary" />
-                            <Label className="text-sm font-semibold">Waktu</Label>
-                            <span className="ml-auto text-sm font-mono bg-primary/10 px-2 py-0.5 rounded text-primary">
-                                {selectedDateTime ? format(selectedDateTime, "HH:mm") : "--:--"}
-                            </span>
-                        </div>
-
-                        <div className="flex gap-2 flex-1">
-                            <div className="flex-1 flex flex-col">
-                                <Label className="text-xs text-center text-muted-foreground mb-2 font-medium">
-                                    Jam
-                                </Label>
-                                <div
-                                    ref={hoursRef}
-                                    className="h-[200px] rounded-lg border bg-background overflow-y-auto overscroll-contain scrollbar-hide"
-                                    style={{ touchAction: 'pan-y' }}
-                                >
-                                    <div className="p-1">
-                                        {hours.map((hour) => (
-                                            <Button
-                                                key={hour}
-                                                size="sm"
-                                                variant={selectedDateTime?.getHours() === hour ? "default" : "ghost"}
-                                                className={cn(
-                                                    "w-full justify-center mb-0.5 font-mono transition-all duration-150",
-                                                    selectedDateTime?.getHours() === hour &&
-                                                    "shadow-md scale-105"
-                                                )}
-                                                onClick={() => handleTimeChange("hour", hour)}
-                                            >
-                                                {hour.toString().padStart(2, '0')}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 flex flex-col">
-                                <Label className="text-xs text-center text-muted-foreground mb-2 font-medium">
-                                    Menit
-                                </Label>
-                                <div
-                                    ref={minutesRef}
-                                    className="h-[200px] rounded-lg border bg-background overflow-y-auto overscroll-contain scrollbar-hide"
-                                    style={{ touchAction: 'pan-y' }}
-                                >
-                                    <div className="p-1">
-                                        {minutes.map((minute) => (
-                                            <Button
-                                                key={minute}
-                                                size="sm"
-                                                variant={selectedDateTime?.getMinutes() === minute ? "default" : "ghost"}
-                                                className={cn(
-                                                    "w-full justify-center mb-0.5 font-mono transition-all duration-150",
-                                                    selectedDateTime?.getMinutes() === minute &&
-                                                    "shadow-md scale-105"
-                                                )}
-                                                onClick={() => handleTimeChange("minute", minute)}
-                                            >
-                                                {minute.toString().padStart(2, '0')}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <Separator />
-                <div className="flex items-center justify-between p-3 bg-muted/20">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleClear}
-                        className="text-muted-foreground hover:text-destructive"
-                    >
-                        Hapus
-                    </Button>
-                    <Button
-                        size="sm"
-                        onClick={handleConfirm}
-                        disabled={!selectedDateTime}
-                        className="px-6"
-                    >
-                        Konfirmasi
-                    </Button>
-                </div>
+                {DateTimeContent}
             </PopoverContent>
         </Popover>
     )
