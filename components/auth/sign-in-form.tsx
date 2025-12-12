@@ -25,12 +25,14 @@ export function SignInForm() {
             const result = await signIn.email({
                 email,
                 password,
+                callbackURL: "/app",
             });
 
             if (result.error) {
                 setError(result.error.message || "Email atau password salah");
             } else {
-                router.push("/app");
+                // Gunakan window.location.href untuk hard navigation agar memastikan cookie terbaca
+                window.location.href = "/app";
             }
         } catch {
             setError("Terjadi kesalahan. Silakan coba lagi.");
