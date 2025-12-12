@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Bell, Loader2, Mail, Lock, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export function SignInForm() {
-    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -25,18 +24,32 @@ export function SignInForm() {
             const result = await signIn.email({
                 email,
                 password,
-                callbackURL: "/app",
             });
 
+            console.log("Sign in result:", result);
+
             if (result.error) {
+                console.error("Sign in error:", result.error);
                 setError(result.error.message || "Email atau password salah");
-            } else {
-                // Gunakan window.location.href untuk hard navigation agar memastikan cookie terbaca
-                window.location.href = "/app";
+                setIsLoading(false);
+                return;
             }
-        } catch {
+
+            // Check if we have data (successful sign in)
+            if (result.data) {
+                toast.success("Berhasil masuk!");
+                // Use hard navigation to ensure cookies are read
+                window.location.href = "/app";
+                // Don't set isLoading to false here, let the page redirect
+                return;
+            }
+
+            // If no error and no data, something unexpected happened
+            setError("Terjadi kesalahan yang tidak terduga. Silakan coba lagi.");
+            setIsLoading(false);
+        } catch (err) {
+            console.error("Sign in exception:", err);
             setError("Terjadi kesalahan. Silakan coba lagi.");
-        } finally {
             setIsLoading(false);
         }
     };

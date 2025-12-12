@@ -3,9 +3,15 @@ import { NextResponse, type NextRequest } from "next/server";
 export default async function authMiddleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Check for session cookie (Better Auth uses "better-auth.session_token" by default)
-    const sessionCookie = request.cookies.get("better-auth.session_token");
+    // Better Auth cookie names (check both possible names)
+    const sessionCookie =
+        request.cookies.get("better-auth.session_token") ||
+        request.cookies.get("__Secure-better-auth.session_token") ||
+        request.cookies.get("better-auth.session");
     const hasSession = !!sessionCookie?.value;
+
+    // Debug logging (remove in production if needed)
+    console.log(`[Middleware] Path: ${pathname}, Has Session: ${hasSession}, Cookies: ${JSON.stringify(Array.from(request.cookies.getAll().map(c => c.name)))}`);
 
     // Protected routes - redirect to sign-in if not authenticated
     if (pathname.startsWith("/app")) {
@@ -27,5 +33,3 @@ export default async function authMiddleware(request: NextRequest) {
 export const config = {
     matcher: ["/app/:path*", "/sign-in", "/sign-up"],
 };
-
-
