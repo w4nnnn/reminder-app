@@ -125,7 +125,14 @@ async function startWorker() {
                     ? reminder.phoneNumber
                     : `${reminder.phoneNumber}@s.whatsapp.net`;
 
-                await sock.sendMessage(jid, { text: reminder.message });
+                const formattedMessage = `*🔔 PENGINGAT 🔔*
+
+${reminder.message}
+
+------------------------------------------------
+_Pesan otomatis dari https://wa-reminder.alecca.my.id/_`;
+
+                await sock.sendMessage(jid, { text: formattedMessage });
 
                 await db
                     .update(reminders)
