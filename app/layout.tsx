@@ -4,7 +4,7 @@ import "./globals.css";
 const siteConfig = {
   name: "WA Reminder",
   description: "Jadwalkan pengingat WhatsApp otomatis dengan mudah. Buat pesan terjadwal yang dikirim ke nomor WhatsApp kapan saja.",
-  url: process.env.BETTER_AUTH_URL || "https://wareminder.example.com",
+  url: process.env.BETTER_AUTH_URL!,
   ogImage: "/og-image.png",
   keywords: [
     "whatsapp reminder",

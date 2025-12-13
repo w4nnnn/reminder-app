@@ -11,7 +11,7 @@ export default async function authMiddleware(request: NextRequest) {
     const hasSession = !!sessionCookie?.value;
 
     // Protected routes - redirect to sign-in if not authenticated
-    if (pathname.startsWith("/app")) {
+    if (pathname.startsWith("/app") || pathname.startsWith("/admin")) {
         if (!hasSession) {
             return NextResponse.redirect(new URL("/sign-in", request.url));
         }
@@ -28,5 +28,6 @@ export default async function authMiddleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ["/app/:path*", "/sign-in", "/sign-up"],
+    matcher: ["/app/:path*", "/admin/:path*", "/sign-in", "/sign-up"],
 };
+
