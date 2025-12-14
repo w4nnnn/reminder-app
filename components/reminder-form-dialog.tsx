@@ -82,21 +82,13 @@ export function ReminderFormDialog({ pendingCount, maxPending }: ReminderFormDia
     const isMobile = useIsMobile();
     const isAtLimit = pendingCount >= maxPending;
 
-    // Prevent closing on outside click
-    const handleOpenChange = (newOpen: boolean) => {
-        // Only allow opening, closing must be done via buttons
-        if (newOpen) {
-            setOpen(true);
-        }
-    };
-
     const handleClose = () => {
         setOpen(false);
     };
 
     if (!isMobile) {
         return (
-            <Dialog open={open} onOpenChange={handleOpenChange}>
+            <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                     <Button disabled={isAtLimit} className="gap-2">
                         <Plus className="h-4 w-4" />
@@ -105,8 +97,6 @@ export function ReminderFormDialog({ pendingCount, maxPending }: ReminderFormDia
                 </DialogTrigger>
                 <DialogContent
                     className="sm:max-w-[500px]"
-                    onPointerDownOutside={(e) => e.preventDefault()}
-                    onEscapeKeyDown={(e) => e.preventDefault()}
                 >
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -114,7 +104,7 @@ export function ReminderFormDialog({ pendingCount, maxPending }: ReminderFormDia
                             Buat Pengingat Baru
                         </DialogTitle>
                         <DialogDescription>
-                            Jadwalkan pesan WhatsApp. Draft akan tersimpan otomatis.
+                            Jadwalkan pesan WhatsApp.
                         </DialogDescription>
                     </DialogHeader>
                     <ReminderForm onSuccess={handleClose} onCancel={handleClose} />
@@ -124,17 +114,14 @@ export function ReminderFormDialog({ pendingCount, maxPending }: ReminderFormDia
     }
 
     return (
-        <Drawer open={open} onOpenChange={handleOpenChange}>
+        <Drawer open={open} onOpenChange={setOpen}>
             <DrawerTrigger asChild>
                 <Button disabled={isAtLimit} className="gap-2">
                     <Plus className="h-4 w-4" />
                     Buat Pengingat
                 </Button>
             </DrawerTrigger>
-            <DrawerContent
-                onPointerDownOutside={(e) => e.preventDefault()}
-                onEscapeKeyDown={(e) => e.preventDefault()}
-            >
+            <DrawerContent>
                 <DrawerHeader className="text-left">
                     <DrawerTitle className="flex items-center gap-2">
                         <MessageSquare className="h-5 w-5 text-primary" />
@@ -172,26 +159,18 @@ export function EditReminderDialog({ reminder, children }: EditReminderDialogPro
     const offset = timezoneOffsets[tz] || 0;
     const displayTime = new Date(reminder.scheduledAt.getTime() + offset * 60 * 60 * 1000);
 
-    const handleOpenChange = (newOpen: boolean) => {
-        if (newOpen) {
-            setOpen(true);
-        }
-    };
-
     const handleClose = () => {
         setOpen(false);
     };
 
     if (!isMobile) {
         return (
-            <Dialog open={open} onOpenChange={handleOpenChange}>
+            <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
                     {children}
                 </DialogTrigger>
                 <DialogContent
                     className="sm:max-w-[500px]"
-                    onPointerDownOutside={(e) => e.preventDefault()}
-                    onEscapeKeyDown={(e) => e.preventDefault()}
                 >
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -220,14 +199,11 @@ export function EditReminderDialog({ reminder, children }: EditReminderDialogPro
     }
 
     return (
-        <Drawer open={open} onOpenChange={handleOpenChange}>
+        <Drawer open={open} onOpenChange={setOpen}>
             <DrawerTrigger asChild>
                 {children}
             </DrawerTrigger>
-            <DrawerContent
-                onPointerDownOutside={(e) => e.preventDefault()}
-                onEscapeKeyDown={(e) => e.preventDefault()}
-            >
+            <DrawerContent>
                 <DrawerHeader className="text-left">
                     <DrawerTitle className="flex items-center gap-2">
                         <Pencil className="h-5 w-5 text-primary" />
@@ -357,15 +333,12 @@ function ReminderForm({ onSuccess, onCancel, editMode = false, initialData }: Re
                 <Input
                     id="phoneNumber"
                     type="tel"
-                    placeholder="08xxxxxxxxxx atau 628xxxxxxxxxx"
+                    placeholder="Masukan nomor WhatsApp"
                     required
                     className="h-12"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
-                    Gunakan format Indonesia (08... atau 628...)
-                </p>
             </div>
 
             {/* Message */}
