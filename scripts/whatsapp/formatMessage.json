@@ -3,7 +3,7 @@
         "text": "*🔔 PENGINGAT 🔔*\n\n{message}\n\n------------------------------------------------\n_Pesan otomatis dari https://wa-reminder.alecca.my.id/_"
     },
     {
-        "text": "Hi! Sekedar mengingatkan:\n\n📌 {message}\n\nSemoga harimu menyenangkan! 😊\n_Dikirim via WA Reminder_"
+        "text": "Hi! Sekedar mengingatkan:\n\n📌 {message}\n\nSemoga harimu menyenangkan! 😊\n_Dikirim via WA Reminder Alecca_"
     },
     {
         "text": "Halo, jangan lupa ya:\n\n👉 {message}\n\nTerima kasih! 🙏\n_Automated Reminder_"
@@ -12,6 +12,6 @@
         "text": "Reminder Alert! ⏰\n\n{message}\n\nMohon diperhatikan, terima kasih.\n_Alecca WA Reminder_"
     },
     {
-        "text": "Assalamu'alaikum, mengingatkan untuk:\n\n📝 {message}\n\nTerima kasih.\n_Reminder Service_"
+        "text": "Assalamu'alaikum, mengingatkan untuk:\n\n📝 {message}\n\nTerima kasih.\n_Reminder Service dari Alecca_"
     }
 ]
