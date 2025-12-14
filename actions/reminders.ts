@@ -42,6 +42,7 @@ export async function createReminder(formData: FormData) {
     const phoneNumber = formData.get("phoneNumber") as string;
     const message = formData.get("message") as string;
     const scheduledAtString = formData.get("scheduledAt") as string;
+    const timezone = (formData.get("timezone") as string) || "WIB";
 
     if (!phoneNumber || !message || !scheduledAtString) {
         throw new Error("Missing required fields");
@@ -49,11 +50,24 @@ export async function createReminder(formData: FormData) {
 
     const scheduledAt = new Date(scheduledAtString);
 
+    // Konversi waktu ke WIB untuk penyimpanan
+    // WIB = UTC+7, WITA = UTC+8, WIT = UTC+9
+    // Jika user memilih WITA/WIT, kurangi jamnya agar tersimpan dalam WIB
+    const timezoneOffsets: Record<string, number> = {
+        "WIB": 0,    // sama dengan server
+        "WITA": -1,  // WITA 1 jam lebih awal dari WIB
+        "WIT": -2,   // WIT 2 jam lebih awal dari WIB
+    };
+
+    const offset = timezoneOffsets[timezone] || 0;
+    const scheduledAtWIB = new Date(scheduledAt.getTime() + offset * 60 * 60 * 1000);
+
     await db.insert(reminders).values({
         userId: session.user.id,
         phoneNumber,
         message,
-        scheduledAt,
+        scheduledAt: scheduledAtWIB,
+        timezone: timezone as "WIB" | "WITA" | "WIT",
         status: "pending",
     });
 
@@ -111,5 +125,59 @@ export async function deleteReminder(id: number) {
     revalidatePath("/app");
 }
 
+export async function updateReminder(id: number, formData: FormData) {
+    const session = await getSession();
 
+    if (!session) {
+        redirect("/sign-in");
+    }
 
+    // Verify the reminder belongs to the user and is still pending
+    const existing = await db
+        .select()
+        .from(reminders)
+        .where(
+            and(
+                eq(reminders.id, id),
+                eq(reminders.userId, session.user.id),
+                eq(reminders.status, "pending")
+            )
+        );
+
+    if (existing.length === 0) {
+        throw new Error("Pengingat tidak ditemukan atau sudah tidak dapat diedit.");
+    }
+
+    const phoneNumber = formData.get("phoneNumber") as string;
+    const message = formData.get("message") as string;
+    const scheduledAtString = formData.get("scheduledAt") as string;
+    const timezone = (formData.get("timezone") as string) || "WIB";
+
+    if (!phoneNumber || !message || !scheduledAtString) {
+        throw new Error("Missing required fields");
+    }
+
+    const scheduledAt = new Date(scheduledAtString);
+
+    // Konversi waktu ke WIB untuk penyimpanan
+    const timezoneOffsets: Record<string, number> = {
+        "WIB": 0,
+        "WITA": -1,
+        "WIT": -2,
+    };
+
+    const offset = timezoneOffsets[timezone] || 0;
+    const scheduledAtWIB = new Date(scheduledAt.getTime() + offset * 60 * 60 * 1000);
+
+    await db
+        .update(reminders)
+        .set({
+            phoneNumber,
+            message,
+            scheduledAt: scheduledAtWIB,
+            timezone: timezone as "WIB" | "WITA" | "WIT",
+        })
+        .where(eq(reminders.id, id));
+
+    revalidatePath("/app");
+}

@@ -57,6 +57,7 @@ export const reminders = sqliteTable("reminders", {
     phoneNumber: text("phone_number").notNull(),
     message: text("message").notNull(),
     scheduledAt: integer("scheduled_at", { mode: "timestamp" }).notNull(),
+    timezone: text("timezone", { enum: ["WIB", "WITA", "WIT"] }).notNull().default("WIB"),
     status: text("status", { enum: ["pending", "sent", "failed"] }).notNull().default("pending"),
     createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 });

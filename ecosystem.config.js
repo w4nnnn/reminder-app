@@ -12,8 +12,7 @@ module.exports = {
             args: 'tsx scripts/whatsapp.ts',
             cwd: './',
             autorestart: true,
-            max_memory_restart: '500M',
-            // Long-running process, no restart_delay needed
+            cron_restart: '0 0 * * *',
         },
     ],
 };

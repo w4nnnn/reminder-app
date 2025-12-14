@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { getReminders, deleteReminder, getPendingCount } from "@/actions/reminders";
-import { ReminderFormDialog } from "@/components/reminder-form-dialog";
+import { ReminderFormDialog, EditReminderDialog } from "@/components/reminder-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Reminder } from "@/lib/schema";
-import { Phone, Calendar, MessageSquare, Trash2, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Phone, Calendar, MessageSquare, Trash2, Clock, CheckCircle2, XCircle, Pencil } from "lucide-react";
 
 type FilterType = "all" | "pending" | "sent" | "failed";
 
@@ -248,6 +248,16 @@ function ReminderCard({ reminder }: { reminder: Reminder }) {
 
     const status = statusConfig[reminder.status as keyof typeof statusConfig] || statusConfig.pending;
 
+    // Konversi waktu dari WIB ke timezone user
+    const timezoneOffsets: Record<string, number> = {
+        "WIB": 0,
+        "WITA": 1,
+        "WIT": 2,
+    };
+    const tz = (reminder as Reminder & { timezone?: string }).timezone || "WIB";
+    const offset = timezoneOffsets[tz] || 0;
+    const displayTime = new Date(reminder.scheduledAt.getTime() + offset * 60 * 60 * 1000);
+
     return (
         <div className="bg-card border rounded-xl p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between gap-4">
@@ -266,14 +276,14 @@ function ReminderCard({ reminder }: { reminder: Reminder }) {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                         <Calendar className="h-3.5 w-3.5 shrink-0" />
                         <span>
-                            {reminder.scheduledAt.toLocaleString("id-ID", {
+                            {displayTime.toLocaleString("id-ID", {
                                 weekday: "short",
                                 day: "numeric",
                                 month: "short",
                                 year: "numeric",
                                 hour: "2-digit",
                                 minute: "2-digit",
-                            })}
+                            })} {tz}
                         </span>
                     </div>
 
@@ -281,22 +291,38 @@ function ReminderCard({ reminder }: { reminder: Reminder }) {
                     <p className="text-sm line-clamp-2">{reminder.message}</p>
                 </div>
 
-                {/* Delete Button */}
-                <form
-                    action={async () => {
-                        "use server";
-                        await deleteReminder(reminder.id);
-                    }}
-                >
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        type="submit"
-                        className="text-muted-foreground hover:text-destructive shrink-0"
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-1 shrink-0">
+                    {/* Edit Button - only for pending */}
+                    {reminder.status === "pending" && (
+                        <EditReminderDialog reminder={reminder as Reminder & { timezone?: string }}>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-muted-foreground hover:text-primary"
+                            >
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        </EditReminderDialog>
+                    )}
+
+                    {/* Delete Button */}
+                    <form
+                        action={async () => {
+                            "use server";
+                            await deleteReminder(reminder.id);
+                        }}
                     >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </form>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            type="submit"
+                            className="text-muted-foreground hover:text-destructive"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </form>
+                </div>
             </div>
         </div>
     );
